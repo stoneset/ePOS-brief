@@ -4,7 +4,7 @@ module.exports = {
     {
       name: 'epos-brief',
       script: 'src/server.js',
-      instances: 1, // une seule instance : le planificateur ne doit tourner qu'une fois
+      instances: 1,
       autorestart: true,
       max_memory_restart: '200M',
       env: {
