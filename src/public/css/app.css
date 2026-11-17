@@ -1,0 +1,53 @@
+/* Apercu du ticket : meme decoupage en colonnes que l'imprimante */
+.paper {
+  background: #d9d9d6;
+  border-radius: .5rem;
+  padding: 1.25rem .5rem;
+  overflow-x: auto;
+}
+.ticket {
+  --lh: 1.25;
+  width: calc(var(--cols) * 1ch + 2.5rem);
+  margin: 0 auto;
+  padding: 1.25rem;
+  background: #fff;
+  color: #111;
+  font-family: "DejaVu Sans Mono", "Liberation Mono", Menlo, Consolas, "Courier New", monospace;
+  font-size: 13px;
+  line-height: var(--lh);
+  white-space: pre;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .25);
+}
+.ticket .tl { min-height: calc(var(--lh) * 1em); }
+.ticket .tc { text-align: center; }
+.ticket .tb { font-weight: 700; }
+.ticket .ti { background: #111; color: #fff; }
+/* double largeur + double hauteur */
+.ticket .big { font-size: 200%; }
+/* double largeur seule : police doublee puis ecrasee de moitie en hauteur */
+.ticket .wide {
+  font-size: 200%;
+  height: calc(var(--lh) * .5em);
+  min-height: 0;
+  transform: scaleY(.5);
+  transform-origin: 0 0;
+}
+/* vignette de la page Modeles */
+.paper-thumb { max-height: 420px; overflow-y: auto; }
+.paper-thumb .ticket { font-size: 10px; padding: .9rem; }
+
+.order-input { width: 4.5rem; }
+.logo-input { white-space: pre; overflow-x: auto; }
+.test-ok { color: var(--bs-success-text-emphasis); }
+.test-ko { color: var(--bs-danger-text-emphasis); }
+.ticket .timg { line-height: 0; }
+.ticket .timg img { display: block; image-rendering: pixelated; }
+.notes-input { max-width: 4.5rem; }
+
+/* Menu des reglages en groupes */
+.settings-nav .settings-group { font-size: .75rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--bs-secondary-color); padding: 0 1rem .35rem; }
+.settings-nav .nav-link { padding-top: .4rem; padding-bottom: .4rem; }
+.src-dot { width: .55rem; height: .55rem; border-radius: 50%; border: 1px solid var(--bs-secondary-color); flex: none; }
+.src-dot.on { background: var(--bs-success); border-color: var(--bs-success); }
+.nav-link.active .src-dot { border-color: #fff; }
+.nav-link.active .src-dot.on { background: #fff; }

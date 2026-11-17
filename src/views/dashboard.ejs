@@ -1,0 +1,85 @@
+<%- include('partials/head') %>
+<% if (!printerConfigured) { %>
+  <div class="alert alert-warning">L'imprimante n'est pas encore configurée. <a href="/settings#printer" class="alert-link">Renseigner son adresse IP</a>.</div>
+<% } %>
+<div class="row g-4">
+  <div class="col-lg-5">
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-secondary">Prochaine impression</h2>
+        <% if (next) { %>
+          <p class="fs-5 mb-1"><%= next.when %></p>
+          <p class="text-secondary mb-0">Modèle <%= next.template %> - <a href="/settings#schedule">modifier le planning</a></p>
+        <% } else { %>
+          <p class="mb-0">Aucune impression planifiée. <a href="/settings#schedule">Régler le planning</a></p>
+        <% } %>
+      </div>
+    </div>
+    <div class="card shadow-sm mb-4">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-secondary">Imprimer maintenant</h2>
+        <form method="post" action="/print" class="d-flex gap-2" data-busy>
+          <select class="form-select" name="template" id="templateSelect" aria-label="Modèle">
+            <% for (const [id, t] of Object.entries(templates)) { %>
+              <option value="<%= id %>" <%= id === selected ? 'selected' : '' %>><%= t.name %></option>
+            <% } %>
+          </select>
+          <button class="btn btn-dark text-nowrap" <%= printerConfigured ? '' : 'disabled' %>>Imprimer</button>
+        </form>
+        <div class="form-text">Génère un ticket frais avec les données du moment.</div>
+      </div>
+    </div>
+    <div class="card shadow-sm">
+      <div class="card-body">
+        <h2 class="h6 text-uppercase text-secondary">État des sources</h2>
+        <ul class="list-unstyled mb-0" id="sources"><li class="text-secondary">Chargement...</li></ul>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-7">
+    <div class="d-flex align-items-center gap-2 mb-2">
+      <h2 class="h6 text-uppercase text-secondary mb-0 me-auto">Aperçu <span id="previewMeta" class="text-lowercase fw-normal"></span></h2>
+      <button class="btn btn-sm btn-outline-secondary" id="refreshPreview" type="button">Rafraîchir</button>
+    </div>
+    <div class="paper" id="preview"><p class="text-secondary p-4 mb-0">Interrogation des sources...</p></div>
+  </div>
+</div>
+
+<h2 class="h6 text-uppercase text-secondary mt-5">Historique</h2>
+<div class="card shadow-sm">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead><tr><th>N°</th><th>Date</th><th>Modèle</th><th>Origine</th><th>État</th><th></th></tr></thead>
+      <tbody>
+      <% if (!history.length) { %><tr><td colspan="6" class="text-secondary">Aucun ticket pour l'instant.</td></tr><% } %>
+      <% for (const p of history) { %>
+        <tr>
+          <td class="font-monospace">#<%= String(p.number).padStart(4, '0') %></td>
+          <td><%= p.when %></td>
+          <td><%= p.templateName %></td>
+          <td><%= p.trigger === 'schedule' ? 'Planifié' : 'Manuel' %></td>
+          <td>
+            <% if (p.status === 'ok') { %>
+              <span class="badge text-bg-success">Imprimé</span>
+              <% if (p.attempts > 1) { %><span class="small text-secondary"><%= p.attempts %> tentatives</span><% } %>
+              <% if (p.reprints) { %><span class="small text-secondary">réimprimé <%= p.reprints %> fois</span><% } %>
+              <% if (p.warnings.length) { %><div class="small text-warning-emphasis"><%= p.warnings.join(', ') %></div><% } %>
+            <% } else if (p.status === 'failed') { %>
+              <span class="badge text-bg-danger">Échec</span> <span class="small text-secondary"><%= p.error %> (<%= p.attempts %> tentative<%= p.attempts > 1 ? 's' : '' %>)</span>
+            <% } else { %>
+              <span class="badge text-bg-warning">Nouvelle tentative prévue</span> <span class="small text-secondary"><%= p.error %></span>
+            <% } %>
+          </td>
+          <td class="text-end text-nowrap">
+            <a class="btn btn-sm btn-outline-secondary" href="/prints/<%= p.id %>">Voir</a>
+            <form method="post" action="/prints/<%= p.id %>/reprint" class="d-inline" data-busy>
+              <button class="btn btn-sm btn-outline-dark" <%= printerConfigured ? '' : 'disabled' %>>Réimprimer</button>
+            </form>
+          </td>
+        </tr>
+      <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<%- include('partials/foot') %>

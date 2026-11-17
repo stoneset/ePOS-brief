@@ -1,0 +1,16 @@
+# Lancement : docker compose up -d --build
+services:
+  epos-brief:
+    build: .
+    image: epos-brief:latest
+    container_name: epos-brief
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      TZ: Europe/Paris
+    volumes:
+      - epos-data:/app/data
+
+volumes:
+  epos-data:

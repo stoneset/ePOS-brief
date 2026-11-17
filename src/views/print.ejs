@@ -1,0 +1,15 @@
+<%- include('partials/head') %>
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <h1 class="h4 mb-0 me-auto">Ticket #<%= String(doc.number).padStart(4, '0') %></h1>
+  <a class="btn btn-outline-secondary" href="/">Retour</a>
+  <form method="post" action="/prints/<%= doc.id %>/reprint">
+    <input type="hidden" name="back" value="print">
+    <button class="btn btn-dark">Réimprimer</button>
+  </form>
+</div>
+<p class="text-secondary">
+  <%= doc.when %> - modèle <%= doc.templateName %> - environ <%= lengthCm %> cm -
+  <% if (doc.status === 'ok') { %>imprimé<% } else { %><span class="text-danger">non imprimé (<%= doc.error %>)</span><% } %>
+</p>
+<div class="paper"><%- html %></div>
+<%- include('partials/foot') %>

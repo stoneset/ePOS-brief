@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title %> - ePOS-Brief</title>
+  <link rel="stylesheet" href="/vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="bg-body-tertiary">
+<% if (currentUser) { %>
+<nav class="navbar navbar-expand-sm navbar-dark bg-dark mb-4">
+  <div class="container">
+    <a class="navbar-brand font-monospace" href="/">ePOS-Brief</a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Menu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="nav">
+      <ul class="navbar-nav me-auto">
+        <li class="nav-item"><a class="nav-link <%= path === '/' ? 'active' : '' %>" href="/">Tableau de bord</a></li>
+        <li class="nav-item"><a class="nav-link <%= path === '/templates' ? 'active' : '' %>" href="/templates">Modèles</a></li>
+        <li class="nav-item"><a class="nav-link <%= path === '/settings' ? 'active' : '' %>" href="/settings">Réglages</a></li>
+      </ul>
+      <form method="post" action="/logout" class="d-flex align-items-center gap-2">
+        <span class="navbar-text small"><%= currentUser %></span>
+        <button class="btn btn-sm btn-outline-light">Déconnexion</button>
+      </form>
+    </div>
+  </div>
+</nav>
+<% } %>
+<main class="container pb-5">
+<% if (flash) { %>
+  <div class="alert alert-<%= flash.type %> alert-dismissible" role="alert">
+    <%= flash.text %>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+  </div>
+<% } %>

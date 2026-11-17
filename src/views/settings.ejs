@@ -1,0 +1,644 @@
+<%- include('partials/head') %>
+<%
+  const kept = (flag) => flag ? 'Enregistré - laisser vide pour conserver' : '';
+  // Menu en trois groupes ; pour les sources, un point indique si elles sont activees
+  const groups = [
+    { title: 'Impression', items: [['printer', 'Imprimante'], ['schedule', 'Planning'], ['failure', 'Échecs et alertes']] },
+    { title: 'Sources', sources: true, items: [
+      ['weather', 'Météo', s.weather.enabled], ['trello', 'Trello', s.trello.enabled],
+      ['calendar', 'Agenda et anniversaires', s.calendar.enabled || s.birthdays.enabled], ['train', 'Train', s.train.enabled],
+      ['homelab', 'Homelab', s.homelab.enabled], ['rss', 'Actus RSS', s.rss.enabled], ['tides', 'Marées', s.tides.enabled],
+      ['wallos', 'Wallos', s.wallos.enabled], ['ecowatt', 'Ecowatt', s.ecowatt.enabled],
+    ] },
+    { title: 'Application', items: [['backup', 'Sauvegarde'], ['account', 'Compte']] },
+  ];
+  let first = true;
+%>
+<h1 class="h4 mb-1">Réglages</h1>
+<p class="text-secondary small mb-3">Les boutons « Tester », « Charger » et « Chercher » utilisent les réglages enregistrés : enregistre d'abord.</p>
+<div class="row g-4">
+  <div class="col-md-3">
+    <div class="nav flex-column nav-pills settings-nav" id="settingsTabs" role="tablist" aria-orientation="vertical">
+      <% groups.forEach((g, gi) => { %>
+        <div class="settings-group<%= gi ? ' mt-3 pt-3 border-top' : '' %>"><%= g.title %><% if (g.sources) { %> <span class="fw-normal text-lowercase">(<%= g.items.filter((it) => it[2]).length %>/<%= g.items.length %> actives)</span><% } %></div>
+        <% g.items.forEach(([id, label, on]) => { %>
+          <button class="nav-link text-start d-flex align-items-center <%= first ? 'active' : '' %>" data-bs-toggle="pill" data-bs-target="#pane-<%= id %>" data-hash="<%= id %>" type="button" role="tab">
+            <span class="me-auto"><%= label %></span>
+            <% if (g.sources) { %><span class="src-dot <%= on ? 'on' : '' %>" title="<%= on ? 'Activée' : 'Désactivée' %>" aria-label="<%= on ? 'Activée' : 'Désactivée' %>"></span><% } %>
+          </button>
+          <% first = false; %>
+        <% }) %>
+      <% }) %>
+    </div>
+  </div>
+  <div class="col-md-9">
+    <div class="tab-content">
+
+      <!-- Imprimante -->
+      <div class="tab-pane fade show active" id="pane-printer" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Imprimante</h2>
+          <p class="text-secondary small">Epson TM-T88V avec carte réseau. Les données sont envoyées en ESC/POS sur le port TCP 9100.</p>
+          <form method="post" action="/settings/printer">
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="p-host">Adresse IP</label>
+                <input class="form-control" id="p-host" name="host" value="<%= s.printer.host %>" placeholder="192.168.1.50">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label" for="p-port">Port</label>
+                <input class="form-control" id="p-port" name="port" type="number" min="1" max="65535" value="<%= s.printer.port %>">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label" for="p-cols">Colonnes</label>
+                <input class="form-control" id="p-cols" name="cols" type="number" min="32" max="64" value="<%= s.printer.cols %>">
+                <div class="form-text">42 en papier 80 mm, 32 en 58 mm.</div>
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="p-cut" name="cut" <%= s.printer.cut ? 'checked' : '' %>>
+                  <label class="form-check-label" for="p-cut">Couper le papier à la fin du ticket</label>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="printer">Imprimer un ticket de test</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Planning -->
+      <div class="tab-pane fade" id="pane-schedule" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Planning</h2>
+          <form method="post" action="/settings/schedule">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="sc-enabled" name="enabled" <%= s.schedule.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="sc-enabled">Impression automatique activée</label>
+            </div>
+            <div class="row g-3 mb-3">
+              <div class="col-sm-4">
+                <label class="form-label" for="sc-time">Heure d'impression</label>
+                <input class="form-control" id="sc-time" name="time" type="time" value="<%= s.schedule.time %>" required>
+              </div>
+              <div class="col-sm-8">
+                <label class="form-label" for="sc-tz">Fuseau horaire</label>
+                <input class="form-control" id="sc-tz" name="timezone" value="<%= s.schedule.timezone %>" placeholder="Europe/Paris">
+              </div>
+            </div>
+            <label class="form-label">Modèle imprimé selon le jour</label>
+            <% for (let d = 1; d <= 7; d++) { %>
+              <div class="row g-2 align-items-center mb-2">
+                <label class="col-4 col-sm-3 col-form-label" for="sc-day-<%= d %>"><%= dayNames[d] %></label>
+                <div class="col-8 col-sm-6">
+                  <select class="form-select" id="sc-day-<%= d %>" name="day_<%= d %>">
+                    <option value="" <%= !s.schedule.days[d] ? 'selected' : '' %>>Pas d'impression</option>
+                    <% for (const [id, t] of Object.entries(templates)) { %>
+                      <option value="<%= id %>" <%= s.schedule.days[d] === id ? 'selected' : '' %>><%= t.name %></option>
+                    <% } %>
+                  </select>
+                </div>
+              </div>
+            <% } %>
+            <div class="row g-2 align-items-center mb-2">
+              <label class="col-4 col-sm-3 col-form-label" for="sc-holiday">Jours fériés</label>
+              <div class="col-8 col-sm-6">
+                <select class="form-select" id="sc-holiday" name="holiday">
+                  <option value="" <%= !s.schedule.holiday ? 'selected' : '' %>>Modèle habituel du jour</option>
+                  <% for (const [id, t] of Object.entries(templates)) { %>
+                    <option value="<%= id %>" <%= s.schedule.holiday === id ? 'selected' : '' %>><%= t.name %></option>
+                  <% } %>
+                  <option value="skip" <%= s.schedule.holiday === 'skip' ? 'selected' : '' %>>Pas d'impression</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-text mb-3">Jours fériés de France métropolitaine, calculés par l'app. Les modèles sont visibles sur la page <a href="/templates">Modèles</a>.</div>
+            <button class="btn btn-dark">Enregistrer</button>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Meteo -->
+      <div class="tab-pane fade" id="pane-weather" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Météo</h2>
+          <p class="text-secondary small">Données Open-Meteo, sans clé ni compte.</p>
+          <form method="post" action="/settings/weather">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="w-enabled" name="enabled" <%= s.weather.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="w-enabled">Afficher la météo</label>
+            </div>
+            <label class="form-label" for="w-search">Chercher une ville</label>
+            <div class="input-group mb-2">
+              <input class="form-control" id="w-search" placeholder="Lannion" data-search-input="weather">
+              <button class="btn btn-outline-secondary" type="button" data-search="weather">Chercher</button>
+            </div>
+            <div class="list-group mb-3" data-search-results="weather"></div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="w-city">Ville affichée sur le ticket</label>
+                <input class="form-control" id="w-city" name="city" value="<%= s.weather.city %>">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label" for="w-lat">Latitude</label>
+                <input class="form-control" id="w-lat" name="latitude" value="<%= s.weather.latitude %>">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label" for="w-lon">Longitude</label>
+                <input class="form-control" id="w-lon" name="longitude" value="<%= s.weather.longitude %>">
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="weather">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Trello -->
+      <div class="tab-pane fade" id="pane-trello" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Trello</h2>
+          <p class="text-secondary small">Les cartes d'une liste deviennent la todo. Celles qui portent l'étiquette choisie vont dans l'encart URGENT. Clé d'API et token : sur trello.com/power-ups/admin, créer un Power-Up, puis générer la clé et le token.</p>
+          <form method="post" action="/settings/trello">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="t-enabled" name="enabled" <%= s.trello.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="t-enabled">Afficher la todo Trello</label>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="t-key">Clé d'API</label>
+                <input class="form-control" id="t-key" name="key" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.trelloKey) %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="t-token">Token</label>
+                <input class="form-control" id="t-token" name="token" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.trelloToken) %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="t-board">Tableau</label>
+                <div class="input-group">
+                  <select class="form-select" id="t-board" name="boardId" data-name-target="#t-boardName">
+                    <option value="<%= s.trello.boardId %>"><%= s.trello.boardName || 'Aucun tableau choisi' %></option>
+                  </select>
+                  <button class="btn btn-outline-secondary" type="button" id="t-load">Charger</button>
+                </div>
+                <input type="hidden" id="t-boardName" name="boardName" value="<%= s.trello.boardName %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="t-list">Liste</label>
+                <select class="form-select" id="t-list" name="listId" data-name-target="#t-listName">
+                  <option value="<%= s.trello.listId %>"><%= s.trello.listName || 'Aucune liste choisie' %></option>
+                </select>
+                <input type="hidden" id="t-listName" name="listName" value="<%= s.trello.listName %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="t-urgent">Étiquette des cartes urgentes</label>
+                <input class="form-control" id="t-urgent" name="urgentLabel" value="<%= s.trello.urgentLabel %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="t-max">Nombre maximum de tâches imprimées</label>
+                <input class="form-control" id="t-max" name="max" type="number" min="1" max="50" value="<%= s.trello.max %>">
+              </div>
+            </div>
+            <div class="form-text" id="t-msg">Enregistre la clé et le token, puis clique sur « Charger » pour choisir le tableau et la liste.</div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="trello">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Agenda -->
+      <div class="tab-pane fade" id="pane-calendar" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Agenda et anniversaires</h2>
+          <form method="post" action="/settings/calendar">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="c-enabled" name="enabled" <%= s.calendar.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="c-enabled">Afficher l'agenda</label>
+            </div>
+
+            <h3 class="h6 mt-4">Compte iCloud</h3>
+            <p class="text-secondary small">Accès par CalDAV, le protocole standard des agendas. Il faut un mot de passe d'app (pas le mot de passe Apple habituel), à générer sur account.apple.com dans la rubrique des mots de passe pour applications.</p>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="c-user">Identifiant Apple (e-mail)</label>
+                <input class="form-control" id="c-user" name="username" value="<%= s.calendar.icloud.username %>" autocomplete="off" data-lpignore="true">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="c-pass">Mot de passe d'app</label>
+                <input class="form-control" id="c-pass" name="password" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.icloudPassword) %>">
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="c-server">Serveur CalDAV</label>
+                <input class="form-control" id="c-server" name="serverUrl" value="<%= s.calendar.icloud.serverUrl %>">
+              </div>
+            </div>
+            <div class="d-flex align-items-center gap-2 mt-3 mb-2">
+              <span class="fw-medium">Calendriers à imprimer</span>
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="c-load">Charger la liste</button>
+              <span class="small" id="c-msg"></span>
+            </div>
+            <div id="c-list">
+              <% if (!s.calendar.icloud.calendars.length) { %><div class="text-secondary small">Enregistre l'identifiant et le mot de passe d'app, puis clique sur « Charger la liste ».</div><% } %>
+              <% s.calendar.icloud.calendars.forEach((c, i) => { %>
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" id="cal-<%= i %>" name="cal_enabled[]" value="<%= c.url %>" <%= c.enabled ? 'checked' : '' %>>
+                  <label class="form-check-label" for="cal-<%= i %>"><%= c.name %></label>
+                  <input type="hidden" name="cal_url[]" value="<%= c.url %>">
+                  <input type="hidden" name="cal_name[]" value="<%= c.name %>">
+                </div>
+              <% }) %>
+            </div>
+
+            <h3 class="h6 mt-4">Liens ICS</h3>
+            <p class="text-secondary small">Pour tout autre agenda publié sous forme de lien (format iCalendar, adresse en https:// ou webcal://).</p>
+            <div data-rows>
+              <% s.calendar.ics.forEach((c) => { %>
+                <div class="row g-2 mb-2" data-row>
+                  <div class="col-4"><input class="form-control" name="ics_name[]" value="<%= c.name %>" placeholder="Nom" aria-label="Nom"></div>
+                  <div class="col"><input class="form-control" name="ics_url[]" value="<%= c.url %>" placeholder="https://..." aria-label="Adresse du lien ICS"></div>
+                  <div class="col-auto"><button class="btn btn-outline-danger" type="button" data-row-remove aria-label="Supprimer">&times;</button></div>
+                </div>
+              <% }) %>
+              <template>
+                <div class="row g-2 mb-2" data-row>
+                  <div class="col-4"><input class="form-control" name="ics_name[]" placeholder="Nom" aria-label="Nom"></div>
+                  <div class="col"><input class="form-control" name="ics_url[]" placeholder="https://..." aria-label="Adresse du lien ICS"></div>
+                  <div class="col-auto"><button class="btn btn-outline-danger" type="button" data-row-remove aria-label="Supprimer">&times;</button></div>
+                </div>
+              </template>
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-row-add>Ajouter un lien</button>
+            </div>
+
+            <div class="row g-3 mt-2">
+              <div class="col-sm-6">
+                <label class="form-label" for="c-max">Nombre maximum d'événements par jour</label>
+                <input class="form-control" id="c-max" name="max" type="number" min="1" max="30" value="<%= s.calendar.max %>">
+              </div>
+            </div>
+
+            <h3 class="h6 mt-4">Anniversaires</h3>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="b-enabled" name="birthdays" <%= s.birthdays.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="b-enabled">Afficher les anniversaires du jour</label>
+            </div>
+            <div class="form-text">Lus dans les contacts du même compte iCloud, via CardDAV (le protocole standard des carnets d'adresses).</div>
+
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="calendar">Tester l'agenda</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="birthdays">Tester les anniversaires</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Train -->
+      <div class="tab-pane fade" id="pane-train" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Train</h2>
+          <p class="text-secondary small">L'encart train n'est imprimé que si le titre d'un événement du jour contient le mot-clé, en mot entier (« train » ne réagit pas à « Entraînement »). Il indique les perturbations entre les deux gares, ou « Aucune perturbation signalée pour le moment ». Clé gratuite à demander sur numerique.sncf.com/startup/api.</p>
+          <form method="post" action="/settings/train">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="tr-enabled" name="enabled" <%= s.train.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="tr-enabled">Activer l'encart train</label>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-8">
+                <label class="form-label" for="tr-key">Clé d'API SNCF</label>
+                <input class="form-control" id="tr-key" name="apiKey" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.trainKey) %>">
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label" for="tr-kw">Mot-clé dans l'agenda</label>
+                <input class="form-control" id="tr-kw" name="keyword" value="<%= s.train.keyword %>">
+              </div>
+              <% [['from', 'Gare de départ', 'Lannion'], ['to', 'Gare d\'arrivée', 'Plouaret']].forEach(([side, label, ph]) => { %>
+                <div class="col-sm-6">
+                  <label class="form-label" for="tr-<%= side %>-search"><%= label %></label>
+                  <div class="input-group mb-1">
+                    <input class="form-control" id="tr-<%= side %>-search" placeholder="<%= ph %>" data-search-input="train-<%= side %>">
+                    <button class="btn btn-outline-secondary" type="button" data-search="train-<%= side %>">Chercher</button>
+                  </div>
+                  <div class="list-group mb-1" data-search-results="train-<%= side %>"></div>
+                  <input class="form-control" name="<%= side %>_name" id="tr-<%= side %>-name" value="<%= s.train[side].name %>" placeholder="Nom imprimé sur le ticket" aria-label="Nom imprimé">
+                  <input type="hidden" name="<%= side %>_id" id="tr-<%= side %>-id" value="<%= s.train[side].id %>">
+                  <div class="form-text" id="tr-<%= side %>-info"><%= s.train[side].id ? `Gare choisie : ${s.train[side].id}` : 'Aucune gare choisie. Enregistre la clé, puis cherche la gare.' %></div>
+                </div>
+              <% }) %>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="train">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Homelab -->
+      <div class="tab-pane fade" id="pane-homelab" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Homelab</h2>
+          <form method="post" action="/settings/homelab">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="h-enabled" name="enabled" <%= s.homelab.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="h-enabled">Afficher l'état du homelab</label>
+            </div>
+            <h3 class="h6">Uptime Kuma (services en panne)</h3>
+            <p class="text-secondary small">Lecture de la page /metrics. Clé à créer dans Uptime Kuma : Réglages, puis Clés d'API.</p>
+            <div class="row g-3">
+              <div class="col-sm-7">
+                <label class="form-label" for="h-kuma-url">Adresse</label>
+                <input class="form-control" id="h-kuma-url" name="kuma_url" value="<%= s.homelab.kuma.url %>" placeholder="http://192.168.1.10:3001">
+              </div>
+              <div class="col-sm-5">
+                <label class="form-label" for="h-kuma-key">Clé d'API</label>
+                <input class="form-control" id="h-kuma-key" name="kuma_apiKey" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.kumaKey) %>">
+              </div>
+            </div>
+            <h3 class="h6 mt-4">Prometheus (alertes)</h3>
+            <p class="text-secondary small">Liste les alertes actives (état « firing ») dont le label <code>severity</code> correspond. Les alertes « warning » sont ignorées par défaut.</p>
+            <div class="row g-3">
+              <div class="col-sm-12">
+                <label class="form-label" for="h-prom-url">Adresse</label>
+                <input class="form-control" id="h-prom-url" name="prom_url" value="<%= s.homelab.prometheus.url %>" placeholder="http://192.168.1.10:9090">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="h-prom-user">Identifiant (si authentification)</label>
+                <input class="form-control" id="h-prom-user" name="prom_username" value="<%= s.homelab.prometheus.username %>" autocomplete="off" data-lpignore="true">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="h-prom-pass">Mot de passe</label>
+                <input class="form-control" id="h-prom-pass" name="prom_password" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.promPassword) %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="h-prom-sev">Gravités à imprimer</label>
+                <input class="form-control" id="h-prom-sev" name="prom_severity" value="<%= s.homelab.prometheus.severity %>">
+                <div class="form-text">Valeurs du label severity, séparées par des virgules.</div>
+              </div>
+              <div class="col-12">
+                <div class="form-check form-switch">
+                  <input class="form-check-input" type="checkbox" id="h-prom-tls" name="prom_insecureTls" <%= s.homelab.prometheus.insecureTls ? 'checked' : '' %>>
+                  <label class="form-check-label" for="h-prom-tls">Accepter un certificat auto-signé (si Prometheus est en https)</label>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="homelab">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- RSS -->
+      <div class="tab-pane fade" id="pane-rss" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Actus RSS</h2>
+          <p class="text-secondary small">Les titres les plus récents, répartis entre les flux.</p>
+          <form method="post" action="/settings/rss">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="r-enabled" name="enabled" <%= s.rss.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="r-enabled">Afficher les actus</label>
+            </div>
+            <div data-rows>
+              <% s.rss.feeds.forEach((f) => { %>
+                <div class="row g-2 mb-2" data-row>
+                  <div class="col-4"><input class="form-control" name="feed_name[]" value="<%= f.name %>" placeholder="Nom" aria-label="Nom"></div>
+                  <div class="col"><input class="form-control" name="feed_url[]" value="<%= f.url %>" placeholder="https://.../rss.xml" aria-label="Adresse du flux"></div>
+                  <div class="col-auto"><button class="btn btn-outline-danger" type="button" data-row-remove aria-label="Supprimer">&times;</button></div>
+                </div>
+              <% }) %>
+              <template>
+                <div class="row g-2 mb-2" data-row>
+                  <div class="col-4"><input class="form-control" name="feed_name[]" placeholder="Nom" aria-label="Nom"></div>
+                  <div class="col"><input class="form-control" name="feed_url[]" placeholder="https://.../rss.xml" aria-label="Adresse du flux"></div>
+                  <div class="col-auto"><button class="btn btn-outline-danger" type="button" data-row-remove aria-label="Supprimer">&times;</button></div>
+                </div>
+              </template>
+              <button class="btn btn-sm btn-outline-secondary" type="button" data-row-add>Ajouter un flux</button>
+            </div>
+            <div class="row g-3 mt-2">
+              <div class="col-sm-6">
+                <label class="form-label" for="r-max">Nombre de titres imprimés</label>
+                <input class="form-control" id="r-max" name="max" type="number" min="1" max="15" value="<%= s.rss.max %>">
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="rss">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Marees -->
+      <div class="tab-pane fade" id="pane-tides" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Marées</h2>
+          <p class="text-secondary small">Imprimées dans le modèle Week-end (et dans le modèle personnalisé si tu ajoutes le bloc). Données de l'API marine d'Open-Meteo, sans clé. Hauteurs par rapport au niveau moyen de la mer, heures précises à environ 15 minutes : ne pas utiliser pour naviguer.</p>
+          <form method="post" action="/settings/tides">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="m-enabled" name="enabled" <%= s.tides.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="m-enabled">Afficher les marées</label>
+            </div>
+            <label class="form-label" for="m-search">Chercher un lieu</label>
+            <div class="input-group mb-2">
+              <input class="form-control" id="m-search" placeholder="Trébeurden" data-search-input="tides">
+              <button class="btn btn-outline-secondary" type="button" data-search="tides">Chercher</button>
+            </div>
+            <div class="list-group mb-3" data-search-results="tides"></div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="m-place">Nom imprimé sur le ticket</label>
+                <input class="form-control" id="m-place" name="place" value="<%= s.tides.place %>">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label" for="m-lat">Latitude</label>
+                <input class="form-control" id="m-lat" name="latitude" value="<%= s.tides.latitude %>">
+              </div>
+              <div class="col-sm-3">
+                <label class="form-label" for="m-lon">Longitude</label>
+                <input class="form-control" id="m-lon" name="longitude" value="<%= s.tides.longitude %>">
+              </div>
+              <div class="col-12 form-text mt-1">Le modèle n'a pas de donnée juste au bord de la côte : si le test échoue, éloigne un peu le point vers le large (par exemple 0,03 à 0,05 de longitude vers l'ouest).</div>
+              <div class="col-sm-6">
+                <label class="form-label" for="m-display">Affichage</label>
+                <select class="form-select" id="m-display" name="display">
+                  <option value="curve" <%= s.tides.display !== 'text' ? 'selected' : '' %>>Courbe et horaires</option>
+                  <option value="text" <%= s.tides.display === 'text' ? 'selected' : '' %>>Horaires seulement</option>
+                </select>
+              </div>
+              <div class="col-sm-6 d-flex align-items-end">
+                <div class="form-check form-switch mb-2">
+                  <input class="form-check-input" type="checkbox" id="m-coef" name="showCoef" <%= s.tides.showCoef ? 'checked' : '' %>>
+                  <label class="form-check-label" for="m-coef">Coefficient estimé (calculé sur Brest)</label>
+                </div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="tides">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Wallos -->
+      <div class="tab-pane fade" id="pane-wallos" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Wallos</h2>
+          <p class="text-secondary small">Liste les abonnements prélevés dans la journée. Le lundi, ajoute ceux du samedi et du dimanche. La clé d'API se trouve dans Wallos, menu Profil.</p>
+          <form method="post" action="/settings/wallos">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="wa-enabled" name="enabled" <%= s.wallos.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="wa-enabled">Afficher les prélèvements du jour</label>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-12">
+                <label class="form-label" for="wa-url">Adresse</label>
+                <input class="form-control" id="wa-url" name="url" value="<%= s.wallos.url %>" placeholder="http://192.168.1.10:8282">
+              </div>
+              <div class="col-sm-8">
+                <label class="form-label" for="wa-key">Clé d'API</label>
+                <input class="form-control" id="wa-key" name="apiKey" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.wallosKey) %>">
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label" for="wa-cur">Symbole de la devise</label>
+                <input class="form-control" id="wa-cur" name="currency" value="<%= s.wallos.currency %>">
+                <div class="form-text">Celui de la devise principale de Wallos.</div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="wallos">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Ecowatt -->
+      <div class="tab-pane fade" id="pane-ecowatt" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Ecowatt</h2>
+          <p class="text-secondary small">Encart imprimé seulement les jours de tension sur le réseau électrique (signal orange ou rouge), aujourd'hui ou demain. Pour les identifiants : créer un compte sur data.rte-france.com, s'abonner à l'API Ecowatt (version 5), créer une application, puis copier son ID client et son ID secret.</p>
+          <form method="post" action="/settings/ecowatt">
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" id="ew-enabled" name="enabled" <%= s.ecowatt.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="ew-enabled">Activer l'alerte Ecowatt</label>
+            </div>
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="ew-id">ID client</label>
+                <input class="form-control" id="ew-id" name="clientId" value="<%= s.ecowatt.clientId %>" autocomplete="off" data-lpignore="true">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="ew-secret">ID secret</label>
+                <input class="form-control" id="ew-secret" name="clientSecret" type="password" autocomplete="new-password" data-lpignore="true" data-1p-ignore placeholder="<%= kept(has.ecowattSecret) %>">
+              </div>
+            </div>
+            <div class="form-text">Les données sont gardées une heure en mémoire : RTE limite le nombre d'appels.</div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="ecowatt">Tester</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Echecs -->
+      <div class="tab-pane fade" id="pane-failure" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Échecs et alertes</h2>
+          <p class="text-secondary small">Si l'impression planifiée échoue (imprimante éteinte, plus de papier, capot ouvert), l'application réessaie. Si toutes les tentatives échouent, elle envoie un message sur Discord.</p>
+          <form method="post" action="/settings/failure">
+            <div class="row g-3">
+              <div class="col-sm-6">
+                <label class="form-label" for="f-count">Nombre de nouvelles tentatives</label>
+                <input class="form-control" id="f-count" name="retryCount" type="number" min="0" max="20" value="<%= s.failure.retryCount %>">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label" for="f-delay">Délai entre deux tentatives (minutes)</label>
+                <input class="form-control" id="f-delay" name="retryDelayMin" type="number" min="1" max="120" value="<%= s.failure.retryDelayMin %>">
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="f-hook">Webhook Discord</label>
+                <input class="form-control" id="f-hook" name="discordWebhook" value="<%= s.failure.discordWebhook %>" placeholder="https://discord.com/api/webhooks/..." autocomplete="off">
+                <div class="form-text">Adresse créée dans les paramètres du salon Discord, rubrique Intégrations. Vide = pas d'alerte.</div>
+              </div>
+            </div>
+            <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+              <button class="btn btn-dark">Enregistrer</button>
+              <button class="btn btn-outline-secondary" type="button" data-test="discord">Envoyer un message de test</button>
+              <span class="small" data-test-result></span>
+            </div>
+          </form>
+        </div></div>
+      </div>
+
+      <!-- Sauvegarde -->
+      <div class="tab-pane fade" id="pane-backup" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Sauvegarde des réglages</h2>
+          <p class="text-secondary small">Tous les réglages dans un fichier JSON : imprimante, planning, sources, modèles, logo. Le compte de connexion et l'historique des tickets n'en font pas partie.</p>
+
+          <h3 class="h6 mt-3">Exporter</h3>
+          <form method="get" action="/settings/export">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" id="bk-secrets" name="secrets" value="1">
+              <label class="form-check-label" for="bk-secrets">Inclure les secrets (clés d'API, tokens, mots de passe, webhook Discord)</label>
+            </div>
+            <div class="form-text mb-3">Avec les secrets, le fichier donne accès à tes comptes Trello, iCloud, Wallos... : garde-le en lieu sûr.</div>
+            <button class="btn btn-dark">Télécharger le fichier</button>
+          </form>
+
+          <h3 class="h6 mt-4">Importer</h3>
+          <p class="text-secondary small mb-2">Remplace les réglages actuels par ceux du fichier. Les secrets absents ou vides dans le fichier sont conservés tels qu'ils sont ici.</p>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <input class="form-control" style="max-width: 22rem" type="file" id="bk-file" accept="application/json,.json" aria-label="Fichier de réglages">
+            <button class="btn btn-outline-dark" type="button" id="bk-import">Importer</button>
+            <span class="small" id="bk-msg"></span>
+          </div>
+        </div></div>
+      </div>
+
+      <!-- Compte -->
+      <div class="tab-pane fade" id="pane-account" role="tabpanel">
+        <div class="card shadow-sm"><div class="card-body">
+          <h2 class="h5">Compte</h2>
+          <form method="post" action="/settings/account" class="col-sm-8 col-lg-6 px-0">
+            <div class="mb-3">
+              <label class="form-label" for="a-current">Mot de passe actuel</label>
+              <input class="form-control" id="a-current" name="current" type="password" autocomplete="current-password" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="a-next">Nouveau mot de passe</label>
+              <input class="form-control" id="a-next" name="next" type="password" minlength="8" autocomplete="new-password" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="a-confirm">Confirmation</label>
+              <input class="form-control" id="a-confirm" name="confirm" type="password" minlength="8" autocomplete="new-password" required>
+            </div>
+            <button class="btn btn-dark">Changer le mot de passe</button>
+          </form>
+        </div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<%- include('partials/foot') %>

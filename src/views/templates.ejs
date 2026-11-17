@@ -1,0 +1,85 @@
+<%- include('partials/head') %>
+<h1 class="h4 mb-1">Modèles de ticket</h1>
+<p class="text-secondary">Aperçus avec des données d'exemple. « Imprimer l'exemple » sort cet aperçu tel quel, « Imprimer avec mes données » sort le vrai ticket du moment (seules les sources activées apparaissent). Le modèle imprimé chaque jour se choisit dans <a href="/settings#schedule">Réglages, Planning</a>.</p>
+
+<div class="row g-4">
+  <% for (const c of cards) { %>
+    <div class="col-md-6 col-xl-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex align-items-baseline gap-2">
+            <h2 class="h5 mb-1 me-auto"><%= c.name %></h2>
+            <span class="badge text-bg-light border">~<%= c.lengthCm %> cm</span>
+          </div>
+          <p class="text-secondary small"><%= c.description %></p>
+          <div class="paper paper-thumb mb-3"><%- c.html %></div>
+          <div class="d-flex flex-wrap gap-2 mt-auto">
+            <form method="post" action="/print/sample" data-busy>
+              <input type="hidden" name="template" value="<%= c.id %>">
+              <button class="btn btn-sm btn-outline-dark" title="Imprime cet aperçu avec les données fictives">Imprimer l'exemple</button>
+            </form>
+            <form method="post" action="/print" data-busy>
+              <input type="hidden" name="template" value="<%= c.id %>">
+              <input type="hidden" name="back" value="templates">
+              <button class="btn btn-sm btn-dark" title="Imprime ce modèle avec tes vraies données">Imprimer avec mes données</button>
+            </form>
+            <a class="btn btn-sm btn-link px-1" href="/?template=<%= c.id %>">Aperçu avec mes données</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<div class="row g-4 mt-2">
+  <div class="col-lg-6" id="custom">
+    <div class="card shadow-sm h-100"><div class="card-body">
+      <h2 class="h5">Modèle personnalisé</h2>
+      <p class="text-secondary small">Coche les blocs voulus et numérote-les dans l'ordre d'impression. L'en-tête (logo et date) et le pied de ticket sont toujours présents.</p>
+      <form method="post" action="/templates/custom">
+        <% for (const b of blocks) { %>
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <input class="form-control form-control-sm order-input" type="number" min="1" max="99" name="pos_<%= b.id %>" value="<%= b.position %>" aria-label="Ordre du bloc <%= b.label %>">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" id="blk-<%= b.id %>" name="block[]" value="<%= b.id %>" <%= b.enabled ? 'checked' : '' %>>
+              <label class="form-check-label" for="blk-<%= b.id %>"><%= b.label %></label>
+            </div>
+          </div>
+        <% } %>
+        <button class="btn btn-dark mt-2">Enregistrer</button>
+      </form>
+    </div></div>
+  </div>
+  <div class="col-lg-6" id="appearance">
+    <div class="card shadow-sm h-100"><div class="card-body">
+      <h2 class="h5">Apparence</h2>
+      <form method="post" action="/templates/appearance">
+        <label class="form-label" for="logo">Logo en ASCII</label>
+        <textarea class="form-control font-monospace logo-input" id="logo" name="logo" rows="6" spellcheck="false" wrap="off"><%= s.logo.text %></textarea>
+        <div class="form-text">Caractères simples uniquement, <%= s.printer.cols %> colonnes maximum.</div>
+        <div class="form-check form-switch mt-3">
+          <input class="form-check-input" type="checkbox" id="doubleWidth" name="doubleWidth" <%= s.logo.doubleWidth ? 'checked' : '' %>>
+          <label class="form-check-label" for="doubleWidth">Logo en double largeur</label>
+        </div>
+        <div class="form-text">Les lignes de <%= Math.floor(s.printer.cols / 2) %> caractères ou moins sont doublées, les autres restent en taille normale et sont centrées.</div>
+        <label class="form-label mt-3">Lignes de la zone « Remarques », par modèle</label>
+        <div class="row g-2">
+          <% for (const n of notes) { %>
+            <div class="col-6 col-sm-4">
+              <div class="input-group input-group-sm">
+                <label class="input-group-text flex-grow-1" for="notes-<%= n.id %>"><%= n.name %></label>
+                <input class="form-control notes-input" id="notes-<%= n.id %>" name="notes_<%= n.id %>" type="number" min="0" max="20" value="<%= n.lines %>">
+              </div>
+            </div>
+          <% } %>
+        </div>
+        <div class="form-text">0 = pas de zone Remarques sur ce modèle.</div>
+        <div class="d-flex gap-2 mt-3">
+          <button class="btn btn-dark">Enregistrer</button>
+          <button class="btn btn-outline-secondary" name="reset" value="1">Remettre le logo d'origine</button>
+        </div>
+      </form>
+    </div></div>
+  </div>
+</div>
+<%- include('partials/foot') %>
